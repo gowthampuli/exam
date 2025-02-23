@@ -13,20 +13,18 @@ function Register() {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Candidate registration submission
   const handleCandidateSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate PAN (5 uppercase letters, 4 digits, 1 uppercase letter)
+    // Validate PAN and phone
     const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-    // Validate phone (exactly 10 digits)
     const phoneRegex = /^[0-9]{10}$/;
     if (!panRegex.test(formData.pan)) {
-      setErrorMessage("Invalid PAN format. It should be 5 uppercase letters, 4 digits, and 1 uppercase letter.");
+      setErrorMessage("Invalid PAN format. (e.g., ABCDE1234F)");
       return;
     }
     if (!phoneRegex.test(formData.phone)) {
-      setErrorMessage("Invalid phone number format. It should be 10 digits.");
+      setErrorMessage("Invalid phone number format. (10 digits required)");
       return;
     }
     try {
@@ -38,11 +36,9 @@ function Register() {
     }
   };
 
-  // HR login submission
   const handleHRLogin = (e) => {
     e.preventDefault();
-    // Dummy HR credentials
-    if (loginData.email === 'hr@centillion.com' && loginData.password === 'Cent@1234') {
+    if (loginData.email === 'hr@centillion.com' && loginData.password === 'cent@1234') {
       navigate('/dashboard');
     } else {
       setErrorMessage("Invalid HR credentials");
@@ -50,9 +46,9 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        {/* Tab Header */}
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
+        {/* Tabs */}
         <div className="flex mb-4 border-b">
           <button 
             onClick={() => { setActiveTab('candidate'); setErrorMessage(''); }}
@@ -72,7 +68,7 @@ function Register() {
           <div>
             <h1 className="text-2xl font-bold mb-4">Candidate Registration</h1>
             <p className="text-sm text-gray-600 mb-4">
-              Please fill in your details. Note: Test duration is 20 minutes and tab switching is prevented.
+              Test duration: 20 minutes. Tab switching is prevented.
             </p>
             {errorMessage && <p className="text-red-500 mb-2">{errorMessage}</p>}
             <form onSubmit={handleCandidateSubmit}>

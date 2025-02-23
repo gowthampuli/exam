@@ -18,7 +18,7 @@ function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Fetch candidates
+  // Fetch candidates using Axios
   const fetchCandidates = async () => {
     setIsLoading(true);
     try {
@@ -35,11 +35,20 @@ function Dashboard() {
     fetchCandidates();
   }, [search]);
 
-  // Counts
+  // Sort candidates:
+  // - Candidates with nonzero scores are sorted in descending order (highest first)
+  // - Candidates with a score of 0 are pushed to the bottom.
+  const sortedCandidates = [...candidates].sort((a, b) => {
+    if (a.testScore === 0 && b.testScore !== 0) return 1;
+    if (b.testScore === 0 && a.testScore !== 0) return -1;
+    return b.testScore - a.testScore;
+  });
+
+  // Compute counts for selected and rejected candidates
   const selectedCount = candidates.filter(c => c.status === 'selected').length;
   const rejectedCount = candidates.filter(c => c.status === 'rejected').length;
 
-  // Bulk delete with loader
+  // Bulk delete all candidates with loader
   const handleDeleteAll = async () => {
     setIsDeleting(true);
     try {
@@ -52,11 +61,12 @@ function Dashboard() {
     setIsDeleting(false);
   };
 
-  // Individual deletion
+  // Set candidate to delete (for individual deletion)
   const confirmDeleteCandidate = (id) => {
     setCandidateToDelete(id);
   };
 
+  // Delete an individual candidate with loader
   const deleteCandidate = async () => {
     if (!candidateToDelete) return;
     setIsDeleting(true);
@@ -70,11 +80,11 @@ function Dashboard() {
     setIsDeleting(false);
   };
 
-  // Pagination
+  // Pagination calculations using sortedCandidates
   const indexOfLastCandidate = currentPage * itemsPerPage;
   const indexOfFirstCandidate = indexOfLastCandidate - itemsPerPage;
-  const currentCandidates = candidates.slice(indexOfFirstCandidate, indexOfLastCandidate);
-  const totalPages = Math.ceil(candidates.length / itemsPerPage);
+  const currentCandidates = sortedCandidates.slice(indexOfFirstCandidate, indexOfLastCandidate);
+  const totalPages = Math.ceil(sortedCandidates.length / itemsPerPage);
 
   const renderPaginationNumbers = () => {
     let pages = [];
@@ -96,12 +106,11 @@ function Dashboard() {
     return pages;
   };
 
-  // Export PDF
   const downloadPDF = () => {
     const doc = new jsPDF();
     const tableColumn = ["S/N", "Name", "Email", "Phone", "PAN", "Test Set", "Score", "Status"];
     const tableRows = [];
-    candidates.forEach((candidate, index) => {
+    sortedCandidates.forEach((candidate, index) => {
       const candidateData = [
         index + 1,
         candidate.name,
@@ -119,13 +128,23 @@ function Dashboard() {
       head: [tableColumn],
       body: tableRows,
       startY: 20,
+      styles: {
+        overflow: 'line',   // Prevent line breaking (all text in one line)
+        cellWidth: 'auto'   // Allow cell width to expand automatically
+      },
+      // Optionally, set a column style if you want to override a specific column:
+      columnStyles: {
+        // For example, force the first column to have auto width:
+        0: { cellWidth: 'auto' }
+      }
     });
     doc.save("candidate_report.pdf");
   };
+  
 
-  // Export Excel
+  // Download candidate data as Excel using SheetJS and file-saver
   const downloadExcel = () => {
-    const formattedData = candidates.map((candidate, index) => ({
+    const formattedData = sortedCandidates.map((candidate, index) => ({
       "S/N": index + 1,
       "Name": candidate.name,
       "Email": candidate.email,
@@ -148,13 +167,13 @@ function Dashboard() {
       <div className="max-w-6xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <h1 className="text-3xl font-extrabold text-gray-800 mb-4 md:mb-0">Dashboard</h1>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
             <input
               type="text"
-              placeholder="Search by PAN, name, or phone"
+              placeholder="Search by name,or phone,pan"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 w-full sm:w-auto"
             />
             <button
               onClick={() => setShowDeleteAllModal(true)}
@@ -178,7 +197,7 @@ function Dashboard() {
         </div>
 
         {/* Candidate counts */}
-        <div className="flex justify-around bg-blue-50 p-4 rounded mb-6">
+        <div className="flex flex-col sm:flex-row justify-around bg-blue-50 p-4 rounded mb-6">
           <div className="text-center">
             <p className="text-2xl font-bold text-green-700">{selectedCount}</p>
             <p className="text-sm text-gray-600">Selected</p>
@@ -248,13 +267,11 @@ function Dashboard() {
             )}
           </div>
         )}
-        <div className="flex items-center justify-center mt-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center mt-6">
           <button
             onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className={`px-4 py-2 mx-1 rounded transition-all duration-200 ${
-              currentPage === 1 ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
+            className={`px-4 py-2 mx-1 rounded transition-all duration-200 ${currentPage === 1 ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
           >
             Previous
           </button>
@@ -262,16 +279,14 @@ function Dashboard() {
           <button
             onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
-            className={`px-4 py-2 mx-1 rounded transition-all duration-200 ${
-              currentPage === totalPages ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
+            className={`px-4 py-2 mx-1 rounded transition-all duration-200 ${currentPage === totalPages ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
           >
             Next
           </button>
         </div>
       </div>
 
-      {/* Modal for individual candidate deletion */}
+      {/* Individual Delete Modal */}
       {candidateToDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -300,7 +315,7 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Modal for bulk deletion confirmation */}
+      {/* Bulk Delete Modal */}
       {showDeleteAllModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
